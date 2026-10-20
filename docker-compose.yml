@@ -1,0 +1,26 @@
+# Local Vibe Kanban server in a container.
+#
+#   docker compose up -d --build
+#
+# The UI is served on http://<host>:3000. The preview proxy listens on 3001;
+# keep the host and container ports identical, since the UI links to the
+# preview proxy using the port the server reports.
+services:
+  vibe-kanban:
+    build: .
+    image: vibe-kanban:local
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+      - "3001:3001"
+    environment:
+      RUST_LOG: info
+    volumes:
+      # App data (SQLite DB, config) and agent credentials live under $HOME.
+      - vk-home:/home/appuser
+      # Repositories and worktrees the agents work on.
+      - vk-repos:/repos
+
+volumes:
+  vk-home:
+  vk-repos:

@@ -109,6 +109,14 @@ pnpm run build
 1. Run `./local-build.sh`
 2. Test with `cd npx-cli && node bin/cli.js`
 
+### Run in Docker
+
+```bash
+docker compose up -d --build
+```
+
+The UI is served on `http://localhost:3000` and the preview proxy on port `3001`. App data and agent credentials are persisted in the `vk-home` volume, and repositories in the `vk-repos` volume (mounted at `/repos`). Keep the host and container ports identical when changing the port mapping.
+
 ### Environment Variables
 
 The following environment variables can be configured at build time or runtime:
@@ -120,6 +128,7 @@ The following environment variables can be configured at build time or runtime:
 | `PORT` | Runtime | Auto-assign | **Production**: Server port. **Dev**: Frontend port (backend uses PORT+1) |
 | `BACKEND_PORT` | Runtime | `0` (auto-assign) | Backend server port (dev mode only, overrides PORT+1) |
 | `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
+| `PREVIEW_PROXY_PORT` | Runtime | `0` (auto-assign) | Preview proxy port |
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |
 | `MCP_HOST` | Runtime | Value of `HOST` | MCP server connection host (use `127.0.0.1` when `HOST=0.0.0.0` on Windows) |
 | `MCP_PORT` | Runtime | Value of `BACKEND_PORT` | MCP server connection port |
