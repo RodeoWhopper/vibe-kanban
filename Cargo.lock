@@ -3530,10 +3530,13 @@ name = "git-host"
 version = "0.1.45"
 dependencies = [
  "async-trait",
+ "axum",
  "backon",
+ "base64 0.22.1",
  "chrono",
  "db",
  "enum_dispatch",
+ "reqwest 0.13.2",
  "serde",
  "serde_json",
  "tempfile",

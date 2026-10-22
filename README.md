@@ -117,6 +117,23 @@ VK_AUTH_USERNAME=dev VK_AUTH_PASSWORD='change-me' docker compose up -d --build
 
 The container is a single-developer sandbox protected by a login page; the credentials are read from `VK_AUTH_USERNAME` and `VK_AUTH_PASSWORD` (they can also be placed in a `.env` file). Sign out via `/logout`. The UI is served on `http://localhost:3000` and the preview proxy on port `3001`. App data and agent credentials are persisted in the `vk-home` volume, and repositories in the `vk-repos` volume (mounted at `/repos`). Keep the host and container ports identical when changing the port mapping.
 
+#### Azure DevOps (cloud and on-premises Server)
+
+Set `AZURE_DEVOPS_EXT_PAT` to a personal access token with *Code (Read & Write)* scope. With a token set, pull requests are created and tracked through the Azure DevOps REST API instead of the Azure CLI, which also works with on-premises Azure DevOps Server (e.g. `https://tfs.example.com/tfs/DefaultCollection/Project/_git/repo`). The image's git credential helper uses the same token for HTTPS clone, fetch and push. Repositories must use HTTPS remotes.
+
+```bash
+docker run -d -p 3000:3000 -p 3001:3001 \
+  -e VK_AUTH_USERNAME=dev -e VK_AUTH_PASSWORD='change-me' \
+  -e AZURE_DEVOPS_EXT_PAT='<token>' \
+  -e VK_GIT_REPOS='https://tfs.example.com/tfs/DefaultCollection/Project/_git/repo' \
+  -e VK_GIT_USER_NAME='Jane Doe' -e VK_GIT_USER_EMAIL='jane@example.com' \
+  -e VK_EXTRA_CA_CERTS=/certs/corp-root-ca.pem -v /path/to/certs:/certs:ro \
+  -v vk-home:/home/appuser -v vk-repos:/repos \
+  vibe-kanban:local
+```
+
+Repositories listed in `VK_GIT_REPOS` are cloned into `/repos` on first start and added to Vibe Kanban automatically.
+
 ### Environment Variables
 
 The following environment variables can be configured at build time or runtime:
@@ -132,6 +149,12 @@ The following environment variables can be configured at build time or runtime:
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |
 | `VK_AUTH_USERNAME` | Runtime | Not set | Enables single-user login together with `VK_AUTH_PASSWORD`. Setting only one of the two prevents the server from starting |
 | `VK_AUTH_PASSWORD` | Runtime | Not set | Password for the single-user login |
+| `AZURE_DEVOPS_EXT_PAT` | Runtime | Not set | Azure DevOps personal access token. Enables the REST API integration (including on-premises Azure DevOps Server) and HTTPS git authentication in the Docker image |
+| `AZURE_DEVOPS_API_VERSION` | Runtime | `5.0` | Azure DevOps REST API version (use `4.1` for TFS 2018) |
+| `VK_GIT_REPOS` | Runtime (Docker) | Not set | Space or comma separated HTTPS repository URLs to clone into `/repos` on first start |
+| `VK_GIT_USER_NAME` | Runtime (Docker) | Not set | Git commit author name for the container |
+| `VK_GIT_USER_EMAIL` | Runtime (Docker) | Not set | Git commit author email for the container |
+| `VK_EXTRA_CA_CERTS` | Runtime (Docker) | Not set | Path to an additional PEM CA certificate trusted by git, the server and Node.js |
 | `MCP_HOST` | Runtime | Value of `HOST` | MCP server connection host (use `127.0.0.1` when `HOST=0.0.0.0` on Windows) |
 | `MCP_PORT` | Runtime | Value of `BACKEND_PORT` | MCP server connection port |
 | `DISABLE_WORKTREE_CLEANUP` | Runtime | Not set | Disable all git worktree cleanup including orphan and expired workspace cleanup (for debugging) |

@@ -55,6 +55,11 @@ struct AzCommit {
 }
 
 #[derive(Deserialize)]
+struct AzValueList<T> {
+    value: Vec<T>,
+}
+
+#[derive(Deserialize)]
 struct AzThreadsResponse {
     value: Vec<AzThread>,
 }
@@ -443,11 +448,24 @@ impl AzCli {
 impl AzCli {
     /// Parse PR response from Azure CLI.
     /// Works for both `az repos pr create` and `az repos pr show`.
-    fn parse_pr_response(raw: &str) -> Result<PullRequestDetail, AzCliError> {
+    pub(super) fn parse_pr_response(raw: &str) -> Result<PullRequestDetail, AzCliError> {
         let pr: AzPrResponse = serde_json::from_str(raw.trim()).map_err(|e| {
             AzCliError::UnexpectedOutput(format!("Failed to parse PR response: {e}; raw: {raw}"))
         })?;
         Ok(Self::az_pr_to_info(pr))
+    }
+
+    /// Parse a REST list response (`{ "value": [...] }`) of pull requests.
+    pub(super) fn parse_pr_value_list(raw: &str) -> Result<Vec<PullRequestDetail>, AzCliError> {
+        let response: AzValueList<AzPrResponse> =
+            serde_json::from_str(raw.trim()).map_err(|e| {
+                AzCliError::UnexpectedOutput(format!("Failed to parse PR list: {e}; raw: {raw}"))
+            })?;
+        Ok(response
+            .value
+            .into_iter()
+            .map(Self::az_pr_to_info)
+            .collect())
     }
 
     fn parse_pr_list_response(raw: &str) -> Result<Vec<PullRequestDetail>, AzCliError> {
@@ -489,7 +507,7 @@ impl AzCli {
         }
     }
 
-    fn parse_pr_threads(raw: &str) -> Result<Vec<UnifiedPrComment>, AzCliError> {
+    pub(super) fn parse_pr_threads(raw: &str) -> Result<Vec<UnifiedPrComment>, AzCliError> {
         // REST API returns { "value": [...threads...] } wrapper
         let response: AzThreadsResponse = serde_json::from_str(raw.trim()).map_err(|e| {
             AzCliError::UnexpectedOutput(format!("Failed to parse threads: {e}; raw: {raw}"))

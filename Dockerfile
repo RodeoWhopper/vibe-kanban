@@ -93,6 +93,12 @@ RUN apt-get update \
 WORKDIR /repos
 
 COPY --from=builder /usr/local/bin/server /usr/local/bin/server
+COPY --chmod=755 docker/entrypoint.sh /usr/local/bin/vk-entrypoint
+COPY --chmod=755 docker/git-credential-azure-devops-pat /usr/local/bin/git-credential-azure-devops-pat
+
+# Hand $AZURE_DEVOPS_EXT_PAT to git for Azure DevOps HTTPS remotes.
+RUN git config --system credential.helper azure-devops-pat \
+  && git config --system credential.useHttpPath true
 
 # Pre-create the data dir so named volumes inherit appuser ownership.
 RUN mkdir -p /repos /home/appuser/.local/share/vibe-kanban \
@@ -112,4 +118,4 @@ VOLUME ["/home/appuser", "/repos"]
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD ["/bin/sh", "-c", "wget --spider -q http://127.0.0.1:${PORT:-3000}/api/health"]
 
-ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/server"]
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/vk-entrypoint"]

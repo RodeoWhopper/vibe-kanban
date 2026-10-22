@@ -1,6 +1,7 @@
 //! Azure DevOps hosting service implementation.
 
 mod cli;
+mod rest;
 
 use std::{path::Path, time::Duration};
 
@@ -8,6 +9,7 @@ use async_trait::async_trait;
 use backon::{ExponentialBuilder, Retryable};
 pub use cli::AzCli;
 use cli::{AzCliError, AzureRepoInfo};
+use rest::AzureRestClient;
 use tokio::task;
 use tracing::info;
 
@@ -19,12 +21,16 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct AzureDevOpsProvider {
     az_cli: AzCli,
+    /// Set when a personal access token is configured; takes precedence over
+    /// the Azure CLI and also supports on-premises Azure DevOps Server.
+    rest: Option<AzureRestClient>,
 }
 
 impl AzureDevOpsProvider {
     pub fn new() -> Result<Self, GitHostError> {
         Ok(Self {
             az_cli: AzCli::new(),
+            rest: AzureRestClient::from_env(),
         })
     }
 
@@ -83,6 +89,16 @@ impl GitHostProvider for AzureDevOpsProvider {
             ));
         }
 
+        if let Some(rest) = &self.rest {
+            let repo = rest.resolve_repo(remote_url).await?;
+            let pr = rest.create_pr(&repo, request).await?;
+            info!(
+                "Created Azure DevOps PR #{} for branch {}",
+                pr.number, request.head_branch
+            );
+            return Ok(pr);
+        }
+
         let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
         (|| async {
@@ -129,6 +145,14 @@ impl GitHostProvider for AzureDevOpsProvider {
     }
 
     async fn get_pr_status(&self, pr_url: &str) -> Result<PullRequestDetail, GitHostError> {
+        if let Some(rest) = &self.rest {
+            let pr_number = rest::pr_number_from_url(pr_url).ok_or_else(|| {
+                GitHostError::PullRequest(format!("Could not parse Azure DevOps PR URL: {pr_url}"))
+            })?;
+            let repo = rest.resolve_repo(pr_url).await?;
+            return rest.get_pr(&repo, pr_number).await;
+        }
+
         (|| async {
             let cli = self.az_cli.clone();
             let url = pr_url.to_string();
@@ -166,6 +190,11 @@ impl GitHostProvider for AzureDevOpsProvider {
         remote_url: &str,
         branch_name: &str,
     ) -> Result<Vec<PullRequestDetail>, GitHostError> {
+        if let Some(rest) = &self.rest {
+            let repo = rest.resolve_repo(remote_url).await?;
+            return rest.list_prs(&repo, Some(branch_name), "all").await;
+        }
+
         let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
         (|| async {
@@ -210,6 +239,11 @@ impl GitHostProvider for AzureDevOpsProvider {
         remote_url: &str,
         pr_number: i64,
     ) -> Result<Vec<UnifiedPrComment>, GitHostError> {
+        if let Some(rest) = &self.rest {
+            let repo = rest.resolve_repo(remote_url).await?;
+            return rest.get_pr_threads(&repo, pr_number).await;
+        }
+
         let repo_info = self.get_repo_info(repo_path, remote_url).await?;
 
         (|| async {
@@ -250,10 +284,14 @@ impl GitHostProvider for AzureDevOpsProvider {
     async fn list_open_prs(
         &self,
         _repo_path: &Path,
-        _remote_url: &str,
+        remote_url: &str,
     ) -> Result<Vec<PullRequestDetail>, GitHostError> {
-        // TODO: Implement list_open_prs for Azure DevOps
-        Err(GitHostError::UnsupportedProvider)
+        let Some(rest) = &self.rest else {
+            // TODO: Implement list_open_prs for the Azure CLI path
+            return Err(GitHostError::UnsupportedProvider);
+        };
+        let repo = rest.resolve_repo(remote_url).await?;
+        rest.list_prs(&repo, None, "active").await
     }
 
     fn provider_kind(&self) -> ProviderKind {

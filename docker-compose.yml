@@ -20,6 +20,15 @@ services:
       # Single-user login. Both are required so the sandbox never starts open.
       VK_AUTH_USERNAME: ${VK_AUTH_USERNAME:?Set VK_AUTH_USERNAME}
       VK_AUTH_PASSWORD: ${VK_AUTH_PASSWORD:?Set VK_AUTH_PASSWORD}
+      # Optional: Azure DevOps (cloud or on-prem Server) via personal access token.
+      # AZURE_DEVOPS_EXT_PAT: ${AZURE_DEVOPS_EXT_PAT}
+      # Optional: repositories cloned into /repos on first start (space or comma separated HTTPS URLs).
+      # VK_GIT_REPOS: https://tfs.example.com/tfs/DefaultCollection/Project/_git/repo
+      # Optional: commit identity for this sandbox's developer.
+      # VK_GIT_USER_NAME: Jane Doe
+      # VK_GIT_USER_EMAIL: jane@example.com
+      # Optional: corporate root CA (PEM), e.g. mounted via a volume.
+      # VK_EXTRA_CA_CERTS: /certs/corp-root-ca.pem
     volumes:
       # App data (SQLite DB, config) and agent credentials live under $HOME.
       - vk-home:/home/appuser
