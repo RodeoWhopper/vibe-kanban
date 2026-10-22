@@ -110,6 +110,6 @@ EXPOSE 3000 3001
 VOLUME ["/home/appuser", "/repos"]
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD ["/bin/sh", "-c", "wget --spider -q http://127.0.0.1:${PORT:-3000}/health"]
+  CMD ["/bin/sh", "-c", "wget --spider -q http://127.0.0.1:${PORT:-3000}/api/health"]
 
 ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/server"]

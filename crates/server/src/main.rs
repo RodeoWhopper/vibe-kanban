@@ -2,7 +2,10 @@ use anyhow::{self, Error as AnyhowError};
 use axum::Router;
 use deployment::{Deployment, DeploymentError};
 use server::{
-    DeploymentImpl, middleware::origin::validate_origin, routes, runtime::relay_registration,
+    DeploymentImpl,
+    middleware::{local_auth::LocalAuth, origin::validate_origin},
+    routes,
+    runtime::relay_registration,
     startup,
 };
 use services::services::container::ContainerService;
@@ -48,6 +51,12 @@ async fn main() -> Result<(), VibeKanbanError> {
         .with(tracing_subscriber::fmt::layer().with_filter(env_filter))
         .with(sentry_layer())
         .init();
+
+    // Fail fast on a half-configured login so the server never starts unprotected.
+    let local_auth = LocalAuth::from_env().map_err(AnyhowError::from)?;
+    if local_auth.is_some() {
+        tracing::info!("Login enabled for the configured user");
+    }
 
     let shutdown_token = CancellationToken::new();
 
@@ -102,7 +111,7 @@ async fn main() -> Result<(), VibeKanbanError> {
         .set_preview_proxy_port(actual_proxy_port)
         .expect("client preview proxy port already set");
 
-    let app_router = routes::router(deployment.clone());
+    let app_router = routes::router(deployment.clone(), local_auth);
 
     // Production only: open browser
     if !cfg!(debug_assertions) {

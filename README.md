@@ -112,10 +112,10 @@ pnpm run build
 ### Run in Docker
 
 ```bash
-docker compose up -d --build
+VK_AUTH_USERNAME=dev VK_AUTH_PASSWORD='change-me' docker compose up -d --build
 ```
 
-The UI is served on `http://localhost:3000` and the preview proxy on port `3001`. App data and agent credentials are persisted in the `vk-home` volume, and repositories in the `vk-repos` volume (mounted at `/repos`). Keep the host and container ports identical when changing the port mapping.
+The container is a single-developer sandbox protected by a login page; the credentials are read from `VK_AUTH_USERNAME` and `VK_AUTH_PASSWORD` (they can also be placed in a `.env` file). Sign out via `/logout`. The UI is served on `http://localhost:3000` and the preview proxy on port `3001`. App data and agent credentials are persisted in the `vk-home` volume, and repositories in the `vk-repos` volume (mounted at `/repos`). Keep the host and container ports identical when changing the port mapping.
 
 ### Environment Variables
 
@@ -130,6 +130,8 @@ The following environment variables can be configured at build time or runtime:
 | `FRONTEND_PORT` | Runtime | `3000` | Frontend dev server port (dev mode only, overrides PORT) |
 | `PREVIEW_PROXY_PORT` | Runtime | `0` (auto-assign) | Preview proxy port |
 | `HOST` | Runtime | `127.0.0.1` | Backend server host |
+| `VK_AUTH_USERNAME` | Runtime | Not set | Enables single-user login together with `VK_AUTH_PASSWORD`. Setting only one of the two prevents the server from starting |
+| `VK_AUTH_PASSWORD` | Runtime | Not set | Password for the single-user login |
 | `MCP_HOST` | Runtime | Value of `HOST` | MCP server connection host (use `127.0.0.1` when `HOST=0.0.0.0` on Windows) |
 | `MCP_PORT` | Runtime | Value of `BACKEND_PORT` | MCP server connection port |
 | `DISABLE_WORKTREE_CLEANUP` | Runtime | Not set | Disable all git worktree cleanup including orphan and expired workspace cleanup (for debugging) |

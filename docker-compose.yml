@@ -1,6 +1,8 @@
 # Local Vibe Kanban server in a container.
 #
-#   docker compose up -d --build
+#   VK_AUTH_USERNAME=dev VK_AUTH_PASSWORD='change-me' docker compose up -d --build
+#
+# (or put both variables in a .env file next to this file)
 #
 # The UI is served on http://<host>:3000. The preview proxy listens on 3001;
 # keep the host and container ports identical, since the UI links to the
@@ -15,6 +17,9 @@ services:
       - "3001:3001"
     environment:
       RUST_LOG: info
+      # Single-user login. Both are required so the sandbox never starts open.
+      VK_AUTH_USERNAME: ${VK_AUTH_USERNAME:?Set VK_AUTH_USERNAME}
+      VK_AUTH_PASSWORD: ${VK_AUTH_PASSWORD:?Set VK_AUTH_PASSWORD}
     volumes:
       # App data (SQLite DB, config) and agent credentials live under $HOME.
       - vk-home:/home/appuser

@@ -1,4 +1,5 @@
 pub mod error_logging;
+pub mod local_auth;
 pub mod model_loaders;
 pub mod origin;
 pub mod relay_request_signature;

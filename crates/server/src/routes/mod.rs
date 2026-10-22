@@ -1,10 +1,9 @@
-use axum::{
-    Router,
-    routing::{IntoMakeService, get},
-};
+use std::net::SocketAddr;
+
+use axum::{Router, extract::connect_info::IntoMakeServiceWithConnectInfo, routing::get};
 use tower_http::{compression::CompressionLayer, validate_request::ValidateRequestHeaderLayer};
 
-use crate::{DeploymentImpl, middleware};
+use crate::{DeploymentImpl, middleware, middleware::local_auth::LocalAuth};
 
 pub mod approvals;
 pub mod config;
@@ -33,7 +32,10 @@ pub mod terminal;
 pub mod webrtc;
 pub mod workspaces;
 
-pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
+pub fn router(
+    deployment: DeploymentImpl,
+    local_auth: Option<LocalAuth>,
+) -> IntoMakeServiceWithConnectInfo<Router, SocketAddr> {
     let relay_signed_routes = Router::new()
         .route("/health", get(health::health_check))
         .merge(config::router())
@@ -77,10 +79,16 @@ pub fn router(deployment: DeploymentImpl) -> IntoMakeService<Router> {
         .layer(axum::middleware::from_fn(middleware::log_server_errors))
         .with_state(deployment);
 
-    Router::new()
+    let app = Router::new()
         .route("/", get(frontend::serve_frontend_root))
         .route("/{*path}", get(frontend::serve_frontend))
-        .nest("/api", api_routes)
-        .layer(CompressionLayer::new())
-        .into_make_service()
+        .nest("/api", api_routes);
+
+    let app = match local_auth {
+        Some(auth) => middleware::local_auth::protect(app, auth),
+        None => app,
+    };
+
+    app.layer(CompressionLayer::new())
+        .into_make_service_with_connect_info::<SocketAddr>()
 }
